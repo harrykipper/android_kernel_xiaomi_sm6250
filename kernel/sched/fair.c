@@ -1938,8 +1938,7 @@ static int task_numa_migrate(struct task_struct *p)
 		return ret;
 	}
 
-	ret = migrate_swap(p, env.best_task, env.best_cpu, env.src_cpu);
-
+	ret = migrate_swap(p, env.best_task);
 	if (ret != 0)
 		trace_sched_stick_numa(p, env.src_cpu, task_cpu(env.best_task));
 	put_task_struct(env.best_task);
@@ -11201,16 +11200,9 @@ no_move:
 			raw_spin_unlock_irqrestore(&busiest->lock, flags);
 
 			if (active_balance) {
-				int ret;
-
-				ret = stop_one_cpu_nowait(cpu_of(busiest),
+				stop_one_cpu_nowait(cpu_of(busiest),
 					active_load_balance_cpu_stop, busiest,
 					&busiest->active_balance_work);
-				if (!ret) {
-					clear_reserved(this_cpu);
-					busiest->active_balance = 0;
-					active_balance = 0;
-				}
 				*continue_balancing = 0;
 			}
 
@@ -12976,7 +12968,7 @@ static void walt_rotate_work_func(struct work_struct *work)
 	struct rq *src_rq = cpu_rq(wr->src_cpu), *dst_rq = cpu_rq(wr->dst_cpu);
 	unsigned long flags;
 
-	migrate_swap(wr->src_task, wr->dst_task, wr->dst_cpu, wr->src_cpu);
+	migrate_swap(wr->src_task, wr->dst_task);
 
 	put_task_struct(wr->src_task);
 	put_task_struct(wr->dst_task);
@@ -13077,9 +13069,7 @@ static void walt_check_for_rotation(struct rq *src_rq)
 
 	double_rq_lock(src_rq, dst_rq);
 	if (dst_rq->curr->sched_class == &fair_sched_class &&
-		!src_rq->active_balance && !dst_rq->active_balance &&
-		cpumask_test_cpu(dst_cpu, &src_rq->curr->cpus_allowed) &&
-		cpumask_test_cpu(src_cpu, &dst_rq->curr->cpus_allowed)) {
+		!src_rq->active_balance && !dst_rq->active_balance) {
 		get_task_struct(src_rq->curr);
 		get_task_struct(dst_rq->curr);
 
